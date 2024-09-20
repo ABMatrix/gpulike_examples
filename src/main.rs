@@ -14,7 +14,6 @@ fn fill_with_random_numbers(array: &mut [u8; 512]) {
     rng.fill(array);
 }
 
-
 #[derive(Clone)]
 pub struct BlockEntry {
     pub block: Block,
@@ -30,8 +29,8 @@ pub struct BlockEntryB {
 }
 
 impl BlockEntryB {
-    fn empty() -> BlockEntryB{
-        BlockEntryB{
+    fn empty() -> BlockEntryB {
+        BlockEntryB {
             block: [0u8; 512],
             entry: [0u8; 512],
             size: 0,
@@ -67,7 +66,7 @@ fn add_block(
 
     let mut hs = Vec::new();
 
-    for (i_chunks, i) in index.chunks(index_len/CHUNKS_NUM).enumerate() {
+    for (i_chunks, i) in index.chunks(index_len / CHUNKS_NUM).enumerate() {
         let input_ptr = blockentries_ptr.clone();
         let each_result_ptr = result_ptr[i_chunks].clone();
 
@@ -99,11 +98,10 @@ fn execution(
     }
 }
 
-
-fn add_block_single_thread(blockentries: Vec<BlockEntry>){
+fn add_block_single_thread(blockentries: Vec<BlockEntry>) {
     let mut res = Vec::new();
     for each in blockentries {
-        res.push(BlockEntryB{
+        res.push(BlockEntryB {
             block: each.entry,
             entry: each.block,
             size: each.size,
@@ -118,7 +116,6 @@ fn main() {
     let start = Instant::now();
     add_block_single_thread(blockentries.clone());
     let duration = start.elapsed();
-    // 打印执行时间
     println!("单线程 执行时间: {duration:?}");
 
     let start = Instant::now();
@@ -129,13 +126,10 @@ fn main() {
     // 预处理 result 的 指针, 把他分割成 Vec<Arc<Mutex<Vec<BlockEntryB>>>>
     let mut result_chunks_to_be_modified_by_each_thread = Vec::new();
     for _ in 0..CHUNKS_NUM {
-        let num = (numbuer_of_inputs/CHUNKS_NUM as u64) as usize;
-        let vec = vec![BlockEntryB::empty();num];
-        result_chunks_to_be_modified_by_each_thread
-        .push(Arc::new(Mutex::new(vec)));
+        let vec = vec![BlockEntryB::empty(); (numbuer_of_inputs / CHUNKS_NUM as u64) as usize];
+        result_chunks_to_be_modified_by_each_thread.push(Arc::new(Mutex::new(vec)));
     }
     let duration = start.elapsed();
-    // 打印执行时间
     println!("gpu形态 线程数{CHUNKS_NUM} 数据预处理 执行时间: {duration:?}");
 
     let start = Instant::now();
@@ -144,9 +138,7 @@ fn main() {
         ptr_input.clone(),
         result_chunks_to_be_modified_by_each_thread.clone(),
     );
-
     let duration = start.elapsed();
-    // 打印执行时间
     println!("gpu形态 线程数{CHUNKS_NUM} 执行时间 执行时间: {duration:?}");
 
     // 还原结果
