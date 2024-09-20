@@ -7,7 +7,7 @@ use rand::{Rng, SeedableRng};
 type Block = [u8; 512];
 type HeaderEntry = [u8; 512];
 
-const CHUNKS_NUM: usize = 160;
+const CHUNKS_NUM: usize = 40;
 
 fn fill_with_random_numbers(array: &mut [u8; 512]) {
     let mut rng = StdRng::from_entropy();
@@ -29,6 +29,16 @@ pub struct BlockEntryB {
     pub size: u64,
 }
 
+impl BlockEntryB {
+    fn empty() -> BlockEntryB{
+        BlockEntryB{
+            block: [0u8; 512],
+            entry: [0u8; 512],
+            size: 0,
+        }
+    }
+}
+
 fn create_data(num: u64) -> Vec<BlockEntry> {
     (0..num)
         .into_iter()
@@ -47,33 +57,17 @@ fn create_data(num: u64) -> Vec<BlockEntry> {
         .collect()
 }
 
-fn create_data_result(num: u64) -> Vec<BlockEntryB> {
-    (0..num)
-        .into_iter()
-        .map(|i| {
-            let a = [0; 512];
-            let b = [0; 512];
-
-            BlockEntryB {
-                block: a,
-                entry: b,
-                size: i,
-            }
-        })
-        .collect()
-}
-
 fn add_block(
     blockentries_ptr: Arc<Vec<BlockEntry>>,
     result_ptr: Vec<Arc<Mutex<Vec<BlockEntryB>>>>,
 ) {
-    let index = blockentries_ptr.len();
+    let index_len = blockentries_ptr.len();
 
-    let index: Vec<usize> = (0..index).into_iter().collect();
+    let index: Vec<usize> = (0..index_len).into_iter().collect();
 
     let mut hs = Vec::new();
 
-    for (i_chunks, i) in index.chunks(CHUNKS_NUM).enumerate() {
+    for (i_chunks, i) in index.chunks(index_len/CHUNKS_NUM).enumerate() {
         let input_ptr = blockentries_ptr.clone();
         let each_result_ptr = result_ptr[i_chunks].clone();
 
@@ -118,8 +112,8 @@ fn add_block_single_thread(blockentries: Vec<BlockEntry>){
 }
 
 fn main() {
-    let blockentries = create_data(160000);
-    let result = create_data_result(160000);
+    let numbuer_of_inputs = 800000;
+    let blockentries = create_data(numbuer_of_inputs);
 
     let start = Instant::now();
     add_block_single_thread(blockentries.clone());
@@ -134,8 +128,11 @@ fn main() {
 
     // 预处理 result 的 指针, 把他分割成 Vec<Arc<Mutex<Vec<BlockEntryB>>>>
     let mut result_chunks_to_be_modified_by_each_thread = Vec::new();
-    for each_res in result.chunks(CHUNKS_NUM) {
-        result_chunks_to_be_modified_by_each_thread.push(Arc::new(Mutex::new(each_res.to_vec())));
+    for _ in 0..CHUNKS_NUM {
+        let num = (numbuer_of_inputs/CHUNKS_NUM as u64) as usize;
+        let vec = vec![BlockEntryB::empty();num];
+        result_chunks_to_be_modified_by_each_thread
+        .push(Arc::new(Mutex::new(vec)));
     }
     let duration = start.elapsed();
     // 打印执行时间
